@@ -60,20 +60,23 @@ def is_ordered_block(w3, block_num):
 
 	# TODO YOUR CODE HERE
 	block = w3.eth.get_block(block_num, full_transactions=True)
-
 	transactions = block.transactions
-	base_fee_per_gas = getattr(block, 'baseFeePerGas', 0)  # Default to 0 if baseFeePerGas is not present
-	
+	base_fee_per_gas = getattr(block, 'baseFeePerGas', None)  # Use None if baseFeePerGas is not present
+
 	priority_fees = []
 
 	for tx in transactions:
-		if tx.type == '0x0':  # Type 0 transaction
-			priority_fee = tx.gasPrice - base_fee_per_gas
-		elif tx.type == '0x2':  # Type 2 transaction
-			priority_fee = min(tx.maxPriorityFeePerGas, tx.maxFeePerGas - base_fee_per_gas)
+		if base_fee_per_gas is None:
+            # Before EIP-1559
+			priority_fee = tx.gasPrice
 		else:
-			# Unrecognized transaction type
-			continue
+			if tx.type == '0x0':  # Type 0 transaction
+				priority_fee = tx.gasPrice - base_fee_per_gas
+			elif tx.type == '0x2':  # Type 2 transaction
+				priority_fee = min(tx.maxPriorityFeePerGas, tx.maxFeePerGas - base_fee_per_gas)
+			else:
+                # Unrecognized transaction type
+				continue
 		priority_fees.append(priority_fee)
 
     # Check if priority fees are in decreasing order
@@ -119,6 +122,9 @@ def get_contract_values(contract, admin_address, owner_address):
 		prime = contract.functions.getPrime(owner_address).call()
 	except AttributeError as e:
 		print("Error: getPrime function not found in contract")
+		prime = None
+	except Exception as e:
+		print("An error occurred while calling getPrime:", e)
 		prime = None
 
 	return onchain_root, has_role, prime
