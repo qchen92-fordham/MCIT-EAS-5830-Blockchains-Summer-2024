@@ -60,24 +60,24 @@ def is_ordered_block(w3, block_num):
 
 	# TODO YOUR CODE HERE
 	block = w3.eth.get_block(block_num, full_transactions=True)
-	transactions = block.transactions
-	base_fee_per_gas = block.baseFeePerGas
 
+	transactions = block.transactions
+	base_fee_per_gas = getattr(block, 'baseFeePerGas', 0)  # Default to 0 if baseFeePerGas is not present
+	
 	priority_fees = []
 
 	for tx in transactions:
-			if tx.type == '0x0':  # Type 0 transaction
-					priority_fee = tx.gasPrice - base_fee_per_gas
-			elif tx.type == '0x2':  # Type 2 transaction
-					priority_fee = min(tx.maxPriorityFeePerGas, tx.maxFeePerGas - base_fee_per_gas)
-			else:
-					# Unrecognized transaction type
-					continue
-			priority_fees.append(priority_fee)
+		if tx.type == '0x0':  # Type 0 transaction
+			priority_fee = tx.gasPrice - base_fee_per_gas
+		elif tx.type == '0x2':  # Type 2 transaction
+			priority_fee = min(tx.maxPriorityFeePerGas, tx.maxFeePerGas - base_fee_per_gas)
+		else:
+			# Unrecognized transaction type
+			continue
+		priority_fees.append(priority_fee)
 
-	# Check if priority fees are in decreasing order
+    # Check if priority fees are in decreasing order
 	ordered = all(priority_fees[i] >= priority_fees[i + 1] for i in range(len(priority_fees) - 1))
-
 
 	return ordered
 
@@ -101,13 +101,25 @@ def get_contract_values(contract, admin_address, owner_address):
 	# TODO complete the following lines by performing contract calls
 
 	# Get and return the merkleRoot from the provided contract
-	onchain_root = contract.functions.merkleRoot().call()
+	try:
+		onchain_root = contract.functions.merkleRoot().call()
+	except AttributeError as e:
+		print("Error: merkleRoot function not found in contract")
+		onchain_root = None
 
-  # Check the contract to see if the address "admin_address" has the role "default_admin_role"
-	has_role = contract.functions.hasRole(default_admin_role, admin_address).call()
+  	# Check the contract to see if the address "admin_address" has the role "default_admin_role"
+	try:
+		has_role = contract.functions.hasRole(default_admin_role, admin_address).call()
+	except AttributeError as e:
+		print("Error: hasRole function not found in contract")
+		has_role = None
 
 	# Call the contract to get the prime owned by "owner_address"
-	prime = contract.functions.getPrime(owner_address).call()
+	try:
+		prime = contract.functions.getPrime(owner_address).call()
+	except AttributeError as e:
+		print("Error: getPrime function not found in contract")
+		prime = None
 
 	return onchain_root, has_role, prime
 
