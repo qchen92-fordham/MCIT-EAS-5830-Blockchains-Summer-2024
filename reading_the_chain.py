@@ -21,11 +21,11 @@ def connect_to_eth():
 
 def connect_with_middleware(contract_json):
 	# TODO insert your code for this method from last week's assignment
-	with open(contract_file, "r") as f:
-	d = json.load(f)
-	d = d['bsc']
-	address = d['address']
-	abi = d['abi']
+	with open(contract_json, "r") as f:
+		d = json.load(f)
+		d = d['bsc']
+		address = d['address']
+		abi = d['abi']
 
 	# TODO complete this method
 	# The first section will be the same as "connect_to_eth()" but with a BNB url
