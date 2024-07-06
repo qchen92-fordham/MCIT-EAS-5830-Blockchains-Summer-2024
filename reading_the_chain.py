@@ -119,12 +119,12 @@ def get_contract_values(contract, admin_address, owner_address):
 
 	# Call the contract to get the prime owned by "owner_address"
 	try:
-		prime = contract.functions.getPrime(owner_address).call()
+		prime = contract.functions.getPrimeByOwner(owner_address).call()
 	except AttributeError as e:
-		print("Error: getPrime function not found in contract")
+		print("Error: getPrimeByOwner function not found in contract")
 		prime = None
 	except Exception as e:
-		print("An error occurred while calling getPrime:", e)
+		print("An error occurred while calling getPrimeByOwner:", e)
 		prime = None
 
 	return onchain_root, has_role, prime
@@ -134,6 +134,7 @@ def get_contract_values(contract, admin_address, owner_address):
 	This might be useful for testing (main is not run by the grader feel free to change 
 	this code anyway that is helpful)
 """
+
 if __name__ == "__main__":
 	# These are addresses associated with the Merkle contract (check on contract
 	# functions and transactions on the block explorer at
