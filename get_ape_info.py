@@ -30,22 +30,36 @@ def get_ape_info(apeID):
 	# Instantiate the contract
 	contract = web3.eth.contract(address=contract_address, abi=abi)
 
-	# Get the owner of the ape
-	owner = contract.functions.ownerOf(apeID).call()
-	data['owner'] = owner
+	try:
+		# Get the owner of the ape
+		owner = contract.functions.ownerOf(apeID).call()
+		data['owner'] = owner
 
-    # Get the token URI and fetch metadata
-	token_uri = contract.functions.tokenURI(apeID).call()
-	response = requests.get(token_uri)
-	if response.status_code == 200:
-		metadata = response.json()
-		data['image'] = metadata['image']
+		# Get the token URI and fetch metadata
+		token_uri = contract.functions.tokenURI(apeID).call()
+		
+		# Convert IPFS URL to HTTP URL if necessary
+		if token_uri.startswith("ipfs://"):
+			token_uri = token_uri.replace("ipfs://", "https://ipfs.io/ipfs/")
+		
+		response = requests.get(token_uri)
+		if response.status_code == 200:
+			metadata = response.json()
+			
+			# Convert IPFS image URL to HTTP URL if necessary
+			image_url = metadata['image']
+			if image_url.startswith("ipfs://"):
+				image_url = image_url.replace("ipfs://", "https://ipfs.io/ipfs/")
+			data['image'] = image_url
 
-        # Find the eyes attribute in the metadata
-		for attribute in metadata['attributes']:
-			if attribute['trait_type'].lower() == 'eyes':
-				data['eyes'] = attribute['value']
-				break
+			# Find the eyes attribute in the metadata
+			for attribute in metadata['attributes']:
+				if attribute['trait_type'].lower() == 'eyes':
+					data['eyes'] = attribute['value']
+					break
+
+	except Exception as e:
+		print(f"Error: get_ape_info failed\n{e}")
 
 	assert isinstance(data,dict), f'get_ape_info{apeID} should return a dict' 
 	assert all( [a in data.keys() for a in ['owner','image','eyes']] ), f"return value should include the keys 'owner','image' and 'eyes'"
