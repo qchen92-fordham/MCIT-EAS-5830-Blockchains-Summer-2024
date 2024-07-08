@@ -30,37 +30,31 @@ def get_ape_info(apeID):
 
 	data = {'owner': "", 'image': "", 'eyes': "" }
 	
-	try:
-		# Fetch the owner of the ape
-		owner = contract.functions.ownerOf(apeID).call()
-		data['owner'] = owner
+	# Fetch the owner of the ape
+	owner = contract.functions.ownerOf(apeID).call()
+	data['owner'] = owner
 
-		# Get the token URI which contains the metadata
-		token_uri = contract.functions.tokenURI(apeID).call()
+	# Get the token URI which contains the metadata
+	token_uri = contract.functions.tokenURI(apeID).call()
 
-		# Convert IPFS URI to HTTP URL if necessary
-		if token_uri.startswith("ipfs://"):
-			token_uri = token_uri.replace("ipfs://", "https://ipfs.io/ipfs/")
+	# Convert IPFS URI to HTTP URL if necessary
+	ipfs_gateway = "https://ipfs.io/ipfs/"
+	ipfs_hash = token_uri.replace("ipfs://", "")
+	metadata_url = ipfs_gateway + ipfs_hash
 
-		# Fetch the metadata from the token URI
-		response = requests.get(token_uri)
-		response.raise_for_status()  # Ensure the request was successful
-		metadata = response.json()
+	# Fetch the metadata from the token URI
+	response = requests.get(metadata_url)
+	response.raise_for_status()  # Ensure the request was successful
+	metadata = response.json()
 
-		# Extract the image URL, converting IPFS to HTTP if necessary
-		image_url = metadata.get("image", "")
-		if image_url.startswith("ipfs://"):
-			image_url = image_url.replace("ipfs://", "https://ipfs.io/ipfs/")
-		data['image'] = image_url
+	# Extract the image URL
+	data['image'] = metadata["image"]
 
-		# Extract the 'eyes' attribute from the metadata
-		for attribute in metadata.get("attributes", []):
-			if attribute.get("trait_type", "").lower() == "eyes":
-				data['eyes'] = attribute.get("value", "")
-				break
-
-	except Exception as e:
-		print(f"Failed to fetch details for Ape ID {apeID}: {e}")
+	# Extract the 'eyes' attribute from the metadata
+	for attribute in metadata.get("attributes", []):
+		if attribute.get("trait_type", "").lower() == "eyes":
+			data['eyes'] = attribute.get("value", "")
+			break
 
 	assert isinstance(data,dict), f'get_ape_info{apeID} should return a dict' 
 	assert all( [a in data.keys() for a in ['owner','image','eyes']] ), f"return value should include the keys 'owner','image' and 'eyes'"
