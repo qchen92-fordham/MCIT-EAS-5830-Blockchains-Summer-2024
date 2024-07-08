@@ -30,40 +30,28 @@ def get_ape_info(apeID):
 	# Instantiate the contract
 	contract = web3.eth.contract(address=contract_address, abi=abi)
 
-	try:
-		# Get the owner of the ape
-		owner = contract.functions.ownerOf(apeID).call()
-		data['owner'] = owner
+    # Get the current owner
+	owner = contract.functions.ownerOf(apeID).call()
+	data['owner'] = owner
 
-		# Get the token URI and fetch metadata
-		token_uri = contract.functions.tokenURI(apeID).call()
+    # Get the token URI
+	token_uri = contract.functions.tokenURI(apeID).call()
 
-		# Convert IPFS URL to HTTP URL if necessary
-		if token_uri.startswith("ipfs://"):
-			token_uri = token_uri.replace("ipfs://", "https://ipfs.io/ipfs/")
-                  
-		response = requests.get(token_uri)
-            
-		if response.status_code == 200:
-			metadata = response.json()
-			print(f"Metadata: {metadata}")
+    # Convert IPFS URI to HTTP URL
+	ipfs_gateway = "https://ipfs.io/ipfs/"
+	ipfs_hash = token_uri.replace("ipfs://", "")
+	metadata_url = ipfs_gateway + ipfs_hash
 
-			# Convert IPFS image URL to HTTP URL if necessary
-			image_url = metadata.get('image', '')
-			if image_url.startswith("ipfs://"):
-				image_url = image_url.replace("ipfs://", "https://ipfs.io/ipfs/")
-			data['image'] = image_url
+    # Fetch metadata
+	response = requests.get(metadata_url)
+	metadata = response.json()
 
-			# Find the eyes attribute in the metadata
-			for attribute in metadata.get('attributes', []):
-				if attribute.get('trait_type', '').lower() == 'eyes':
-					data['eyes'] = attribute.get('value', '')
-					break
-		else:
-			print(f"Failed to fetch metadata for token URI: {token_uri}, Status Code: {response.status_code}")
-    
-	except Exception as e:
-		print(f"Error: get_ape_info failed\n{e}")
+    # Extract fields
+	data['image'] = metadata["image"]
+	for attribute in metadata["attributes"]:
+		if attribute["trait_type"] == "Eyes":
+			data['eyes'] = attribute["value"]
+			break
 
 	assert isinstance(data,dict), f'get_ape_info{apeID} should return a dict' 
 	assert all( [a in data.keys() for a in ['owner','image','eyes']] ), f"return value should include the keys 'owner','image' and 'eyes'"
