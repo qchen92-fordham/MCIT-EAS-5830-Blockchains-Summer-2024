@@ -37,27 +37,31 @@ def get_ape_info(apeID):
 
 		# Get the token URI and fetch metadata
 		token_uri = contract.functions.tokenURI(apeID).call()
-		
+
 		# Convert IPFS URL to HTTP URL if necessary
 		if token_uri.startswith("ipfs://"):
 			token_uri = token_uri.replace("ipfs://", "https://ipfs.io/ipfs/")
-		
+                  
 		response = requests.get(token_uri)
+            
 		if response.status_code == 200:
 			metadata = response.json()
-			
+			print(f"Metadata: {metadata}")
+
 			# Convert IPFS image URL to HTTP URL if necessary
-			image_url = metadata['image']
+			image_url = metadata.get('image', '')
 			if image_url.startswith("ipfs://"):
 				image_url = image_url.replace("ipfs://", "https://ipfs.io/ipfs/")
 			data['image'] = image_url
 
 			# Find the eyes attribute in the metadata
-			for attribute in metadata['attributes']:
-				if attribute['trait_type'].lower() == 'eyes':
-					data['eyes'] = attribute['value']
+			for attribute in metadata.get('attributes', []):
+				if attribute.get('trait_type', '').lower() == 'eyes':
+					data['eyes'] = attribute.get('value', '')
 					break
-
+		else:
+			print(f"Failed to fetch metadata for token URI: {token_uri}, Status Code: {response.status_code}")
+    
 	except Exception as e:
 		print(f"Error: get_ape_info failed\n{e}")
 
