@@ -11,11 +11,15 @@ def sign(m):
     eth_address = '0x3b7f6e8011Bc2137ea1Aca77fAeDbe84Af46374A'  # Eth account
     private_key = 'b3d8146f623407e7691479caeefb6332b60665ad9fee90a8697feaac79b783b0'
 
-    account = w3.eth.account.privateKeyToAccount(private_key)
+    # Correct way to create an account using the private key
+    account = eth_account.Account.from_key(private_key)
+
+    # Generate the message to be signed
+    message = encode_defunct(text=m)
 
     # generate signature
     # your code here
-    message = encode_defunct(text=m)
+
     signed_message = w3.eth.account.sign_message(message, private_key)
 
     assert isinstance(signed_message, eth_account.datastructures.SignedMessage)
