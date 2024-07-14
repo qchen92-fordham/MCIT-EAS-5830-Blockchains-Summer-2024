@@ -7,14 +7,11 @@ def sign(m):
     w3 = Web3()
     # create an eth account and recover the address (derived from the public key) and private key
     # your code here
-    private_key = 'b3d8146f623407e7691479caeefb6332b60665ad9fee90a8697feaac79b783b0'  
+
+    eth_address = '0x3b7f6e8011Bc2137ea1Aca77fAeDbe84Af46374A'  # Eth account
+    private_key = 'b3d8146f623407e7691479caeefb6332b60665ad9fee90a8697feaac79b783b0'
+
     account = eth_account.Account.from_key(private_key)
-
-    eth_address = account.address
-    #eth_address = '0x3b7f6e8011Bc2137ea1Aca77fAeDbe84Af46374A'  # Eth account
-      
-
-    # Generate the message to be signed
     message = encode_defunct(text=m)
 
     # generate signature
