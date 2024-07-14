@@ -42,7 +42,7 @@ def get_keys(challenge, keyId=0, filename="eth_mnemonic.txt"):
     acct = Account.from_mnemonic(new_mnemonic)
     
     # Encode the challenge message
-    msg = encode_defunct(challenge)
+    msg = encode_defunct(text=challenge.hex())
     sig = acct.sign_message(msg)
     
     # Recover address to verify signature
