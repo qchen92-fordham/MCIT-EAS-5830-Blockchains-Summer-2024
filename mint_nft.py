@@ -32,7 +32,7 @@ contract = w3.eth.contract(address=contract_address, abi=abi)
 
 # Function to mint NFT
 def mint_nft():
-    nonce = w3.eth.get_transaction_count(acct.address)
+    nonce = w3.eth.getTransactionCount(acct.address)
     nonce_value = random.randint(1, 1e6)  # Generate a random nonce
 
     print(f"Nonce value: {nonce_value}")
@@ -50,7 +50,7 @@ def mint_nft():
     print(f"Transaction sent with hash: {tx_hash.hex()}")
 
     # Wait for the transaction receipt
-    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    tx_receipt = w3.eth.waitForTransactionReceipt(tx_hash)
     print(f"Transaction receipt: {tx_receipt}")
 
 if __name__ == '__main__':
