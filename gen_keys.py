@@ -23,23 +23,22 @@ def get_keys(challenge, keyId=0, filename="eth_mnemonic.txt"):
     
     # Ensure the mnemonic file exists
     if not os.path.exists(filename):
-        open(filename, 'w').close()
+        raise FileNotFoundError(f"The file {filename} does not exist. Please create it and add your mnemonic.")
     
     # Read mnemonics from file
     with open(filename, 'r') as f:
         mnemonics = f.readlines()
 
-    # Generate new mnemonic if needed
+    if len(mnemonics) == 0:
+        raise ValueError(f"The file {filename} is empty. Please add your mnemonic.")
+
     if len(mnemonics) <= keyId:
-        new_mnemonic = mnemo.generate(strength=128)
-        mnemonics.append(new_mnemonic + "\n")
-        with open(filename, 'a') as f:
-            f.write(new_mnemonic + "\n")
-    else:
-        new_mnemonic = mnemonics[keyId].strip()
+        raise ValueError(f"The file {filename} does not contain enough mnemonics. Expected at least {keyId + 1}, found {len(mnemonics)}.")
+    
+    mnemonic = mnemonics[keyId].strip()
 
     # Generate account from mnemonic
-    acct = Account.from_mnemonic(new_mnemonic)
+    acct = Account.from_mnemonic(mnemonic)
     
     # Encode the challenge message
     msg = encode_defunct(challenge)
