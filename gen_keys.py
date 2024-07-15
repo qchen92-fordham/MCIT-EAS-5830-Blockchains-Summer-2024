@@ -2,13 +2,7 @@ from web3 import Web3
 import eth_account
 import os
 from eth_account import Account
-from mnemonic import Mnemonic
-from eth_account.messages import encode_defunct
-
-# Enable mnemonic features
-Account.enable_unaudited_hdwallet_features()
-
-def get_keys(challenge, keyId=0, filename="eth_mnemonic.txt"):
+def get_keys(challenge,keyId = 0, filename = "eth_mnemonic.txt"):
     """
     Generate a stable private key
     challenge - byte string
@@ -19,40 +13,34 @@ def get_keys(challenge, keyId=0, filename="eth_mnemonic.txt"):
     If fewer than (keyId+1) mnemonics have been generated, generate a new one and return that
     """
 
-    mnemo = Mnemonic("english")
-    
-    # Ensure the mnemonic file exists
-    if not os.path.exists(filename):
-        raise FileNotFoundError(f"The file {filename} does not exist. Please create it and add your mnemonic.")
-    
-    # Read mnemonics from file
-    with open(filename, 'r') as f:
-        mnemonics = f.readlines()
+    w3 = Web3()
 
-    if len(mnemonics) == 0:
-        raise ValueError(f"The file {filename} is empty. Please add your mnemonic.")
+    msg = eth_account.messages.encode_defunct(challenge)
 
-    if len(mnemonics) <= keyId:
-        raise ValueError(f"The file {filename} does not contain enough mnemonics. Expected at least {keyId + 1}, found {len(mnemonics)}.")
-    
-    mnemonic = mnemonics[keyId].strip()
-
-    # Generate account from mnemonic
-    acct = Account.from_mnemonic(mnemonic)
-    
-    # Encode the challenge message
-    msg = encode_defunct(challenge)
-    sig = acct.sign_message(msg)
-    
-    # Recover address to verify signature
+   #YOUR CODE HERE
+    if os.path.exists(filename):
+        with open(filename, 'r') as f:
+            mnemonics = f.read().splitlines()
+    else:
+        mnemonics = []
+    while len(mnemonics) <= keyId:
+        account = Account.create()
+        mnemonics.append(account.key.hex())
+        with open(filename, 'a') as f:
+            f.write(f"{account.key.hex()}\n")
+    private_key = mnemonics[keyId].strip()
+    acct = Account.from_key(private_key)
     eth_addr = acct.address
+    sig = w3.eth.account.sign_message(msg, private_key=private_key)
 
-    assert Account.recover_message(msg, signature=sig.signature) == eth_addr, "Failed to sign message properly"
 
+    assert eth_account.Account.recover_message(msg,signature=sig.signature.hex()) == eth_addr, f"Failed to sign message properly"
+
+    #return sig, acct #acct contains the private key
     return sig, eth_addr
 
 if __name__ == "__main__":
     for i in range(4):
         challenge = os.urandom(64)
-        sig, addr = get_keys(challenge=challenge, keyId=i)
-        print(addr)
+        sig, addr= get_keys(challenge=challenge, keyId=i)
+        print( addr )
