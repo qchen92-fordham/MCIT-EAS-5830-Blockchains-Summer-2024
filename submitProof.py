@@ -95,8 +95,9 @@ def build_merkle(leaves):
     if len(leaves) % 2 != 0:
         leaves.append(leaves[-1])
     tree = [leaves]
-    while len(tree[-1]) > 1:
-        current_level = tree[-1]
+    current_level = leaves
+
+    while len(current_level) > 1:
         next_level = []
         for i in range(0, len(current_level), 2):
             combined = hashlib.sha256(current_level[i] + current_level[i + 1]).digest()
@@ -104,6 +105,8 @@ def build_merkle(leaves):
         if len(next_level) % 2 != 0:
             next_level.append(next_level[-1])
         tree.append(next_level)
+        current_level = next_level
+
     return tree
 
 
