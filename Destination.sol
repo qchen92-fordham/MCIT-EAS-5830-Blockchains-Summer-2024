@@ -1,43 +1,53 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "forge-std/Test.sol";
-import "../contracts/Destination.sol";
-import "../contracts/BridgeToken.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "./BridgeToken.sol";
 
-contract DestinationTest is Test {
-    Destination destination;
-    BridgeToken bridgeToken;
-    address admin = address(1);
-    address warden = address(2);
-    address user = address(3);
-    address s_recipient = address(4);
-    address underlyingToken = address(5);
-    uint256 amount = 1000;
+contract Destination is AccessControl {
+    bytes32 public constant WARDEN_ROLE = keccak256("BRIDGE_WARDEN_ROLE");
+    bytes32 public constant CREATOR_ROLE = keccak256("CREATOR_ROLE");
+    mapping(address => address) public underlying_tokens;
+    mapping(address => address) public wrapped_tokens;
+    address[] public tokens;
 
-    function setUp() public {
-        destination = new Destination(admin);
-        bridgeToken = new BridgeToken(underlyingToken, "Wrapped Token", "WTKN", address(destination));
-        destination.grantRole(destination.CREATOR_ROLE(), admin);
-        destination.grantRole(destination.WARDEN_ROLE(), warden);
+    event Creation(address indexed underlying_token, address indexed wrapped_token);
+    event Wrap(address indexed underlying_token, address indexed wrapped_token, address indexed to, uint256 amount);
+    event Unwrap(address indexed underlying_token, address indexed wrapped_token, address frm, address indexed to, uint256 amount);
 
-        // Register the wrapped token
-        vm.prank(admin);
-        destination.createToken(underlyingToken, "Wrapped Token", "WTKN");
+    constructor(address admin) {
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(CREATOR_ROLE, admin);
+        _grantRole(WARDEN_ROLE, admin);
     }
 
-    function testWrap() public {
-        // Test wrap function
-        vm.prank(warden);
-        destination.wrap(underlyingToken, user, amount);
+    function wrap(address _underlying_token, address _recipient, uint256 _amount) public onlyRole(WARDEN_ROLE) {
+        require(underlying_tokens[_underlying_token] != address(0), "Token not supported");
+        require(_recipient != address(0), "Recipient cannot be the zero address");
+        require(_amount > 0, "Amount must be greater than zero");
+        ERC20(_underlying_token).transferFrom(msg.sender, address(this), _amount);
+        BridgeToken(wrapped_tokens[_underlying_token]).mint(_recipient, _amount);
+        emit Wrap(_underlying_token, wrapped_tokens[_underlying_token], _recipient, _amount);
     }
 
-    function testUnwrap() public {
-        // Test unwrap function
-        vm.prank(warden);
-        destination.wrap(underlyingToken, user, amount);
+    function unwrap(address _wrapped_token, address _recipient, uint256 _amount) public {
+        require(wrapped_tokens[_wrapped_token] != address(0), "Token not supported");
+        require(_amount > 0, "Amount must be greater than zero");
+        require(_recipient != address(0), "Recipient cannot be the zero address");
+        BridgeToken(_wrapped_token).burnFrom(msg.sender, _amount);
+        ERC20(underlying_tokens[_wrapped_token]).transfer(_recipient, _amount);
+        emit Unwrap(underlying_tokens[_wrapped_token], _wrapped_token, msg.sender, _recipient, _amount);
+    }
 
-        vm.prank(user);
-        destination.unwrap(address(bridgeToken), amount); // Updated to match the new signature
+    function createToken(address _underlying_token, string memory name, string memory symbol) public onlyRole(CREATOR_ROLE) returns (address) {
+        require(underlying_tokens[_underlying_token] == address(0), "Underlying token already exists");
+        require(wrapped_tokens[_underlying_token] == address(0), "Wrapped token already exists");
+        BridgeToken wrapped_token = new BridgeToken(_underlying_token, name, symbol, address(this));
+        wrapped_tokens[_underlying_token] = address(wrapped_token);
+        underlying_tokens[address(wrapped_token)] = _underlying_token;
+        tokens.push(_underlying_token);
+        emit Creation(_underlying_token, address(wrapped_token));
+        return address(wrapped_token);
     }
 }
