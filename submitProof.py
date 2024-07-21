@@ -104,11 +104,9 @@ def build_merkle(leaves):
                 combined = hashlib.sha256(current_level[i] + current_level[i + 1]).digest()
             else:
                 combined = hashlib.sha256(current_level[i] + current_level[i]).digest()
-            next_level.append(combined)
+            next_level.append(Web3.toBytes(combined))
         tree.append(next_level)
 
-    # Ensure the root is in HexBytes format
-    tree[-1][0] = Web3.toHex(tree[-1][0])
     return tree
 
 
