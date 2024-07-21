@@ -2,6 +2,7 @@ import eth_account
 import random
 import string
 import json
+import hashlib
 from pathlib import Path
 from web3 import Web3
 from web3.middleware import geth_poa_middleware  # Necessary for POA chains
@@ -65,7 +66,6 @@ def generate_primes(num_primes):
         num += 1
 
     return primes_list
-
 
 
 def convert_leaves(primes_list):
