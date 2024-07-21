@@ -31,12 +31,13 @@ contract Destination is AccessControl {
         emit Wrap(_underlying_token, wrapped_tokens[_underlying_token], _recipient, _amount);
     }
 
-    function unwrap(address _wrapped_token, uint256 _amount) public {
+    function unwrap(address _wrapped_token, address _recipient, uint256 _amount) public {
         require(wrapped_tokens[_wrapped_token] != address(0), "Token not supported");
         require(_amount > 0, "Amount must be greater than zero");
+        require(_recipient != address(0), "Recipient cannot be the zero address");
         BridgeToken(_wrapped_token).burnFrom(msg.sender, _amount);
-        ERC20(underlying_tokens[_wrapped_token]).transfer(msg.sender, _amount);
-        emit Unwrap(underlying_tokens[_wrapped_token], _wrapped_token, msg.sender, msg.sender, _amount);
+        ERC20(underlying_tokens[_wrapped_token]).transfer(_recipient, _amount);
+        emit Unwrap(underlying_tokens[_wrapped_token], _wrapped_token, msg.sender, _recipient, _amount);
     }
 
     function createToken(address _underlying_token, string memory name, string memory symbol) public onlyRole(CREATOR_ROLE) returns (address) {

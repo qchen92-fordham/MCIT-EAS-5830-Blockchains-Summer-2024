@@ -23,27 +23,15 @@ contract Destination is AccessControl {
     }
 
 	function wrap(address _underlying_token, address _recipient, uint256 _amount ) public onlyRole(WARDEN_ROLE) {
-		require(underlying_tokens[_underlying_token] != address(0), "Token not supported");
-        ERC20(_underlying_token).transferFrom(msg.sender, address(this), _amount);
-        ERC20(wrapped_tokens[_underlying_token]).mint(_recipient, _amount);
-        emit Wrap(_underlying_token, wrapped_tokens[_underlying_token], _recipient, _amount);
+		//YOUR CODE HERE
 	}
 
 	function unwrap(address _wrapped_token, address _recipient, uint256 _amount ) public {
-		require(wrapped_tokens[_wrapped_token] != address(0), "Token not supported");
-        ERC20(_wrapped_token).burnFrom(msg.sender, _amount);
-        ERC20(underlying_tokens[_wrapped_token]).transfer(_recipient, _amount);
-        emit Unwrap(underlying_tokens[_wrapped_token], _wrapped_token, msg.sender, _recipient, _amount);
+		//YOUR CODE HERE
 	}
 
 	function createToken(address _underlying_token, string memory name, string memory symbol ) public onlyRole(CREATOR_ROLE) returns(address) {
-		require(underlying_tokens[_underlying_token] == address(0), "Token already exists");
-        BridgeToken wrapped_token = new BridgeToken(name, symbol);
-        wrapped_tokens[_underlying_token] = address(wrapped_token);
-        underlying_tokens[address(wrapped_token)] = _underlying_token;
-        tokens.push(_underlying_token);
-        emit Creation(_underlying_token, address(wrapped_token));
-        return address(wrapped_token);
+		//YOUR CODE HERE
 	}
 
 }
