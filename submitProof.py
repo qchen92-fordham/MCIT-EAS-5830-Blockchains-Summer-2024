@@ -99,13 +99,12 @@ def build_merkle(leaves):
         current_level = tree[-1]
         next_level = []
         for i in range(0, len(current_level), 2):
-            next_level.append(hashlib.sha256((current_level[i] + current_level[i+1]).encode()).hexdigest())
+            combined = hashlib.sha256(current_level[i] + current_level[i + 1]).digest()
+            next_level.append(combined)
         if len(next_level) % 2 != 0:
             next_level.append(next_level[-1])
         tree.append(next_level)
-    root = tree[-1][0]
-
-    return tree, root
+    return tree
 
 
 def prove_merkle(merkle_tree, random_indx):
