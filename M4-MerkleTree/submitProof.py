@@ -8,6 +8,7 @@ from web3 import Web3
 from web3.middleware import geth_poa_middleware  # Necessary for POA chains
 from web3.auto import w3
 from eth_account.messages import encode_defunct
+from hexbytes import HexBytes
 
 def merkle_assignment():
     """
@@ -27,7 +28,7 @@ def merkle_assignment():
     tree = build_merkle(leaves)
 
     # Select a random leaf and create a proof for that leaf
-    random_leaf_index = 3 #TODO generate a random index from primes to claim (0 is already claimed)
+    random_leaf_index = 3  # TODO generate a random index from primes to claim (0 is already claimed)
     proof = prove_merkle(tree, random_leaf_index)
 
     # This is the same way the grader generates a challenge for sign_challenge()
@@ -37,12 +38,10 @@ def merkle_assignment():
 
     if sign_challenge_verify(challenge, addr, sig):
         tx_hash = '0x'
-        # TODO, when you are ready to attempt to claim a prime (and pay gas fees),
-        #  complete this method and run your code with the following line un-commented
-        tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
+        # Uncomment the following line when you are ready to attempt to claim a prime (and pay gas fees)
+        # tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
     
     return addr, sig, tx_hash
-
 
 def generate_primes(num_primes):
     """
@@ -50,8 +49,6 @@ def generate_primes(num_primes):
         returns list (with length n) of primes (as ints) in ascending order
     """
     primes_list = []
-
-    #TODO YOUR CODE HERE
     candidate = 2
 
     while len(primes_list) < num_primes:
@@ -62,38 +59,20 @@ def generate_primes(num_primes):
 
     return primes_list
 
-
-def is_prime(n):
-    # Helper function to check if a number is prime
-    if n <= 1:
-        return False
-    for i in range(2, int(n ** 0.5) + 1):
-        if n % i == 0:
-            return False
-    return True
-
-
 def convert_leaves(primes_list):
     """
         Converts the leaves (primes_list) to bytes32 format
         returns list of primes where list entries are bytes32 encodings of primes_list entries
     """
-
-    # TODO YOUR CODE HERE
     leaves = [hashlib.sha256(str(p).encode()).digest() for p in primes_list]
-
     return leaves
-
 
 def build_merkle(leaves):
     """
         Function to build a Merkle Tree from the list of prime numbers in bytes32 format
         Returns the Merkle tree (tree) as a list where tree[0] is the list of leaves,
         tree[1] is the parent hashes, and so on until tree[n] which is the root hash
-        the root hash produced by the "hash_pair" helper function
     """
-
-    #TODO YOUR CODE HERE
     tree = [leaves]
 
     while len(tree[-1]) > 1:
@@ -104,31 +83,27 @@ def build_merkle(leaves):
                 combined = hashlib.sha256(current_level[i] + current_level[i + 1]).digest()
             else:
                 combined = hashlib.sha256(current_level[i] + current_level[i]).digest()
-            next_level.append(Web3.toBytes(combined))
+            next_level.append(HexBytes(combined))
         tree.append(next_level)
 
+    tree[-1][0] = HexBytes(tree[-1][0])
     return tree
 
-
-def prove_merkle(merkle_tree, random_indx):
+def prove_merkle(merkle_tree, index):
     """
         Takes a random_index to create a proof of inclusion for and a complete Merkle tree
         as a list of lists where index 0 is the list of leaves, index 1 is the list of
         parent hash values, up to index -1 which is the list of the root hash.
         returns a proof of inclusion as list of values
     """
-    merkle_proof = []
-
-    # TODO YOUR CODE HERE
-
-    current_index = random_indx
+    proof = []
+    current_index = index
     for level in merkle_tree[:-1]:
-        sibling_index = current_index + 1 if current_index % 2 == 0 else current_index - 1
+        sibling_index = current_index ^ 1
         if sibling_index < len(level):
-            merkle_proof.append(level[sibling_index])
+            proof.append(HexBytes(level[sibling_index]))
         current_index //= 2
-    return merkle_proof
-
+    return proof
 
 def sign_challenge(challenge):
     """
@@ -143,12 +118,10 @@ def sign_challenge(challenge):
     addr = acct.address
     eth_sk = acct.key
 
-    # TODO YOUR CODE HERE
     message = encode_defunct(text=challenge)
     eth_sig_obj = w3.eth.account.sign_message(message, private_key=eth_sk)
 
     return addr, eth_sig_obj.signature.hex()
-
 
 def send_signed_msg(proof, random_leaf):
     """
@@ -162,7 +135,6 @@ def send_signed_msg(proof, random_leaf):
     address, abi = get_contract_info(chain)
     w3 = connect_to(chain)
 
-    # TODO YOUR CODE HERE
     contract = w3.eth.contract(address=address, abi=abi)
     nonce = w3.eth.getTransactionCount(acct.address)
 
@@ -182,7 +154,6 @@ def send_signed_msg(proof, random_leaf):
     receipt = w3.eth.waitForTransactionReceipt(tx_hash)
     return receipt.transactionHash.hex()
 
-
 # Helper functions that do not need to be modified
 def connect_to(chain):
     """
@@ -192,16 +163,11 @@ def connect_to(chain):
     if chain not in ['avax','bsc']:
         print(f"{chain} is not a valid option for 'connect_to()'")
         return None
-    if chain == 'avax':
-        api_url = f"https://api.avax-test.network/ext/bc/C/rpc"  # AVAX C-chain testnet
-    else:
-        api_url = f"https://data-seed-prebsc-1-s1.binance.org:8545/"  # BSC testnet
+    api_url = f"https://api.avax-test.network/ext/bc/C/rpc" if chain == 'avax' else f"https://data-seed-prebsc-1-s1.binance.org:8545/"
     w3 = Web3(Web3.HTTPProvider(api_url))
-    # inject the poa compatibility middleware to the innermost layer
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
     return w3
-
 
 def get_account():
     """
@@ -215,7 +181,6 @@ def get_account():
         sk = sk[2:]
     return eth_account.Account.from_key(sk)
 
-
 def get_contract_info(chain):
     """
         Returns a contract address and contract abi from "contract_info.json"
@@ -226,7 +191,6 @@ def get_contract_info(chain):
         d = json.load(f)
         d = d[chain]
     return d['address'], d['abi']
-
 
 def sign_challenge_verify(challenge, addr, sig):
     """
@@ -243,23 +207,11 @@ def sign_challenge_verify(challenge, addr, sig):
         print(f"signature = {sig}\naddress = {addr}\nchallenge = {challenge}")
         return False
 
-
 def hash_pair(a, b):
-    """
-        The OpenZeppelin Merkle Tree Validator we use sorts the leaves
-        https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/cryptography/MerkleProof.sol#L217
-        So you must sort the leaves as well
-
-        Also, hash functions like keccak are very sensitive to input encoding, so the solidity_keccak function is the function to use
-
-        Another potential gotcha, if you have a prime number (as an int) bytes(prime) will *not* give you the byte representation of the integer prime
-        Instead, you must call int.from_bytes(prime,'big').
-    """
     if a < b:
         return Web3.solidity_keccak(['bytes32', 'bytes32'], [a, b])
     else:
         return Web3.solidity_keccak(['bytes32', 'bytes32'], [b, a])
-
 
 if __name__ == "__main__":
     merkle_assignment()
