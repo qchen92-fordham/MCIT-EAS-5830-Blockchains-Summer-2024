@@ -2,12 +2,14 @@ import eth_account
 import random
 import string
 import json
+import hashlib
 from pathlib import Path
 from web3 import Web3
 from web3.middleware import geth_poa_middleware  # Necessary for POA chains
 import hashlib
 from eth_account.messages import encode_defunct
 from hexbytes import HexBytes
+
 
 def merkle_assignment():
     """
@@ -27,7 +29,7 @@ def merkle_assignment():
     tree = build_merkle(leaves)
 
     # Select a random leaf and create a proof for that leaf
-    random_leaf_index = 1  # TODO generate a random index from primes to claim (0 is already claimed)
+    random_leaf_index = 3 #TODO generate a random index from primes to claim (0 is already claimed)
     proof = prove_merkle(tree, random_leaf_index)
 
     # This is the same way the grader generates a challenge for sign_challenge()
@@ -37,9 +39,10 @@ def merkle_assignment():
 
     if sign_challenge_verify(challenge, addr, sig):
         tx_hash = '0x'
-        # Uncomment the following line when you are ready to attempt to claim a prime (and pay gas fees)
+        # TODO, when you are ready to attempt to claim a prime (and pay gas fees),
+        #  complete this method and run your code with the following line un-commented
         tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
-        #return addr, sig, tx_hash
+
 
 def generate_primes(num_primes):
     """
@@ -47,6 +50,8 @@ def generate_primes(num_primes):
         returns list (with length n) of primes (as ints) in ascending order
     """
     primes_list = []
+
+    #TODO YOUR CODE HERE
     num = 2
     while len(primes_list) < num_primes:
         is_prime = True
@@ -59,7 +64,9 @@ def generate_primes(num_primes):
         if is_prime:
             primes_list.append(num)
         num += 1
+
     return primes_list
+
 
 def convert_leaves(primes_list):
     """
@@ -67,10 +74,13 @@ def convert_leaves(primes_list):
         returns list of primes where list entries are bytes32 encodings of primes_list entries
     """
     leaves = []
+
     for prime in primes_list:
         prime_bytes = prime.to_bytes(32, byteorder='big')
         leaves.append(prime_bytes)
+
     return leaves
+
 
 def build_merkle(leaves):
     """
@@ -79,7 +89,9 @@ def build_merkle(leaves):
         tree[1] is the parent hashes, and so on until tree[n] which is the root hash
         the root hash produced by the "hash_pair" helper function
     """
+
     tree = [leaves]
+
     while len(tree[-1]) > 1:
         current_level = tree[-1]
         next_level = []
@@ -90,8 +102,11 @@ def build_merkle(leaves):
             else:
                 right = left
             next_level.append(hash_pair(left, right))
+
         tree.append(next_level)
+
     return tree
+
 
 def prove_merkle(merkle_tree, random_indx):
     """
@@ -102,11 +117,17 @@ def prove_merkle(merkle_tree, random_indx):
     """
     merkle_proof = []
     index = random_indx
+
     for i in merkle_tree[:-1]:
+
         next = index ^ 1
+
         merkle_proof.append(i[next])
+
         index //= 2
+
     return merkle_proof
+
 
 def sign_challenge(challenge):
     """
@@ -118,11 +139,16 @@ def sign_challenge(challenge):
     """
     acct = get_account()
     w3 = Web3()
+
     addr = acct.address
     eth_sk = acct.key
+
+    # TODO YOUR CODE HERE
     message = encode_defunct(text=challenge)
     eth_sig_obj = w3.eth.account.sign_message(message, private_key=eth_sk)
+
     return addr, eth_sig_obj.signature.hex()
+
 
 def send_signed_msg(proof, random_leaf):
     """
@@ -131,21 +157,29 @@ def send_signed_msg(proof, random_leaf):
         on the contract
     """
     chain = 'bsc'
+
     acct = get_account()
     address, abi = get_contract_info(chain)
     w3 = connect_to(chain)
+
     contract = w3.eth.contract(address=address, abi=abi)
     nonce = w3.eth.get_transaction_count(acct.address)
-    transaction = contract.functions.submit(proof, random_leaf).build_transaction({
-        'chainId': 97,  # BSC Testnet chain ID
-        'gas': 2000000,
-        'gasPrice': w3.to_wei('10', 'gwei'),
+    transaction = contract.functions.submit(proof,
+                                            random_leaf).build_transaction({
+        'from': acct.address,
         'nonce': nonce,
+        'gas': 2000000,
+        'gasPrice': w3.to_wei('50', 'gwei')
     })
-    signed_tx = w3.eth.account.sign_transaction(transaction, private_key=acct.key)
+
+
+    signed_tx = w3.eth.account.sign_transaction(transaction,
+                                                private_key=acct.key)
+
     tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-    return w3.to_hex(receipt.transactionHash)
+
+    return w3.to_hex(tx_hash)
+
 
 # Helper functions that do not need to be modified
 def connect_to(chain):
@@ -156,10 +190,16 @@ def connect_to(chain):
     if chain not in ['avax','bsc']:
         print(f"{chain} is not a valid option for 'connect_to()'")
         return None
-    api_url = f"https://api.avax-test.network/ext/bc/C/rpc" if chain == 'avax' else f"https://data-seed-prebsc-1-s1.binance.org:8545/"
+    if chain == 'avax':
+        api_url = f"https://api.avax-test.network/ext/bc/C/rpc"  # AVAX C-chain testnet
+    else:
+        api_url = f"https://data-seed-prebsc-1-s1.binance.org:8545/"  # BSC testnet
     w3 = Web3(Web3.HTTPProvider(api_url))
+    # inject the poa compatibility middleware to the innermost layer
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
     return w3
+
 
 def get_account():
     """
@@ -173,6 +213,7 @@ def get_account():
         sk = sk[2:]
     return eth_account.Account.from_key(sk)
 
+
 def get_contract_info(chain):
     """
         Returns a contract address and contract abi from "contract_info.json"
@@ -184,12 +225,14 @@ def get_contract_info(chain):
         d = d[chain]
     return d['address'], d['abi']
 
+
 def sign_challenge_verify(challenge, addr, sig):
     """
         Helper to verify signatures, verifies sign_challenge(challenge)
         the same way the grader will. No changes are needed for this method
     """
     eth_encoded_msg = eth_account.messages.encode_defunct(text=challenge)
+
     if eth_account.Account.recover_message(eth_encoded_msg, signature=sig) == addr:
         print(f"Success: signed the challenge {challenge} using address {addr}!")
         return True
@@ -197,6 +240,7 @@ def sign_challenge_verify(challenge, addr, sig):
         print(f"Failure: The signature does not verify!")
         print(f"signature = {sig}\naddress = {addr}\nchallenge = {challenge}")
         return False
+
 
 def hash_pair(a, b):
     """
@@ -213,6 +257,7 @@ def hash_pair(a, b):
         return Web3.solidity_keccak(['bytes32', 'bytes32'], [a, b])
     else:
         return Web3.solidity_keccak(['bytes32', 'bytes32'], [b, a])
+
 
 if __name__ == "__main__":
     merkle_assignment()
