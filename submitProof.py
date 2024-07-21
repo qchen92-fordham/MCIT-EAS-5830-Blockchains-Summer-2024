@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 from web3 import Web3
 from web3.middleware import geth_poa_middleware  # Necessary for POA chains
+import hashlib
+from eth_account.messages import encode_defunct
+from hexbytes import HexBytes
 
 
 def merkle_assignment():
@@ -25,7 +28,7 @@ def merkle_assignment():
     tree = build_merkle(leaves)
 
     # Select a random leaf and create a proof for that leaf
-    random_leaf_index = 0 #TODO generate a random index from primes to claim (0 is already claimed)
+    random_leaf_index = 3 #TODO generate a random index from primes to claim (0 is already claimed)
     proof = prove_merkle(tree, random_leaf_index)
 
     # This is the same way the grader generates a challenge for sign_challenge()
@@ -37,7 +40,7 @@ def merkle_assignment():
         tx_hash = '0x'
         # TODO, when you are ready to attempt to claim a prime (and pay gas fees),
         #  complete this method and run your code with the following line un-commented
-        # tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
+        #tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
 
 
 def generate_primes(num_primes):
@@ -48,8 +51,21 @@ def generate_primes(num_primes):
     primes_list = []
 
     #TODO YOUR CODE HERE
+    num = 2
+    while len(primes_list) < num_primes:
+        is_prime = True
+        for prime in primes_list:
+            if prime * prime > num:
+                break
+            if num % prime == 0:
+                is_prime = False
+                break
+        if is_prime:
+            primes_list.append(num)
+        num += 1
 
     return primes_list
+
 
 
 def convert_leaves(primes_list):
@@ -57,10 +73,13 @@ def convert_leaves(primes_list):
         Converts the leaves (primes_list) to bytes32 format
         returns list of primes where list entries are bytes32 encodings of primes_list entries
     """
+    leaves = []
 
-    # TODO YOUR CODE HERE
+    for prime in primes_list:
+        prime_bytes = prime.to_bytes(32, byteorder='big')
+        leaves.append(prime_bytes)
 
-    return []
+    return leaves
 
 
 def build_merkle(leaves):
@@ -71,8 +90,20 @@ def build_merkle(leaves):
         the root hash produced by the "hash_pair" helper function
     """
 
-    #TODO YOUR CODE HERE
-    tree = []
+    tree = [leaves]
+
+    while len(tree[-1]) > 1:
+        current_level = tree[-1]
+        next_level = []
+        for i in range(0, len(current_level), 2):
+            left = current_level[i]
+            if i + 1 < len(current_level):
+                right = current_level[i + 1]
+            else:
+                right = left
+            next_level.append(hash_pair(left, right))
+
+        tree.append(next_level)
 
     return tree
 
@@ -85,7 +116,15 @@ def prove_merkle(merkle_tree, random_indx):
         returns a proof of inclusion as list of values
     """
     merkle_proof = []
-    # TODO YOUR CODE HERE
+    index = random_indx
+
+    for i in merkle_tree[:-1]:
+
+        next = index ^ 1
+
+        merkle_proof.append(i[next])
+
+        index //= 2
 
     return merkle_proof
 
@@ -99,12 +138,14 @@ def sign_challenge(challenge):
         claimed a prime
     """
     acct = get_account()
+    w3 = Web3()
 
     addr = acct.address
     eth_sk = acct.key
 
     # TODO YOUR CODE HERE
-    eth_sig_obj = 'placeholder'
+    message = encode_defunct(text=challenge)
+    eth_sig_obj = w3.eth.account.sign_message(message, private_key=eth_sk)
 
     return addr, eth_sig_obj.signature.hex()
 
@@ -121,10 +162,23 @@ def send_signed_msg(proof, random_leaf):
     address, abi = get_contract_info(chain)
     w3 = connect_to(chain)
 
-    # TODO YOUR CODE HERE
-    tx_hash = 'placeholder'
+    contract = w3.eth.contract(address=address, abi=abi)
+    nonce = w3.eth.get_transaction_count(acct.address)
+    transaction = contract.functions.submit(proof,
+                                            random_leaf).build_transaction({
+        'from': acct.address,
+        'nonce': nonce,
+        'gas': 2000000,
+        'gasPrice': w3.to_wei('50', 'gwei')
+    })
 
-    return tx_hash
+
+    signed_tx = w3.eth.account.sign_transaction(transaction,
+                                                private_key=acct.key)
+
+    tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    return w3.to_hex(tx_hash)
 
 
 # Helper functions that do not need to be modified
