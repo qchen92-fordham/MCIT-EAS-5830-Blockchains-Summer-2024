@@ -27,7 +27,8 @@ def mine_block(k, prev_hash, rand_lines):
     
     while True:
         nonce_bytes = str(nonce).encode()
-        hash_result = hashlib.sha256(prev_hash + rand_lines_str + nonce_bytes).hexdigest()
+        hash_input = prev_hash + rand_lines_str + nonce_bytes
+        hash_result = hashlib.sha256(hash_input).hexdigest()
         if hash_result[-k:] == target:
             break
         nonce += 1
