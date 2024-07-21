@@ -107,6 +107,8 @@ def build_merkle(leaves):
             next_level.append(combined)
         tree.append(next_level)
 
+    # Ensure the root is in HexBytes format
+    tree[-1][0] = Web3.toHex(tree[-1][0])
     return tree
 
 
@@ -121,15 +123,14 @@ def prove_merkle(merkle_tree, random_indx):
 
     # TODO YOUR CODE HERE
 
-    index = merkle_tree[0].index(random_indx)
-
+    current_index = random_indx
     for level in merkle_tree[:-1]:
-        if index % 2 == 0:
-            merkle_proof.append(level[index + 1])
+        if current_index % 2 == 0:
+            if current_index + 1 < len(level):
+                merkle_proof.append(level[current_index + 1])
         else:
-            merkle_proof.append(level[index - 1])
-        index //= 2
-
+            merkle_proof.append(level[current_index - 1])
+        current_index //= 2
     return merkle_proof
 
 
