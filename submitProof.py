@@ -39,7 +39,9 @@ def merkle_assignment():
         tx_hash = '0x'
         # TODO, when you are ready to attempt to claim a prime (and pay gas fees),
         #  complete this method and run your code with the following line un-commented
-        tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
+        #tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
+    
+    return addr, sig, tx_hash
 
 
 def generate_primes(num_primes):
@@ -92,20 +94,18 @@ def build_merkle(leaves):
     """
 
     #TODO YOUR CODE HERE
-    if len(leaves) % 2 != 0:
-        leaves.append(leaves[-1])
     tree = [leaves]
-    current_level = leaves
 
-    while len(current_level) > 1:
+    while len(tree[-1]) > 1:
+        current_level = tree[-1]
         next_level = []
         for i in range(0, len(current_level), 2):
-            combined = hashlib.sha256(current_level[i] + current_level[i + 1]).digest()
+            if i + 1 < len(current_level):
+                combined = hashlib.sha256(current_level[i] + current_level[i + 1]).digest()
+            else:
+                combined = hashlib.sha256(current_level[i] + current_level[i]).digest()
             next_level.append(combined)
-        if len(next_level) % 2 != 0:
-            next_level.append(next_level[-1])
         tree.append(next_level)
-        current_level = next_level
 
     return tree
 
