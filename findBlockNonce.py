@@ -69,5 +69,5 @@ if __name__ == '__main__':
     diff = 5
 
     rand_lines = get_random_lines(filename, num_lines)
-    nonce = mine_block(diff, b'previous_hash'， rand_lines)
+    nonce = mine_block(diff, b'previous_hash', rand_lines)
     print(nonce)
