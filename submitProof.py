@@ -39,7 +39,7 @@ def merkle_assignment():
         tx_hash = '0x'
         # TODO, when you are ready to attempt to claim a prime (and pay gas fees),
         #  complete this method and run your code with the following line un-commented
-        #tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
+        tx_hash = send_signed_msg(proof, leaves[random_leaf_index])
     
     return addr, sig, tx_hash
 
@@ -108,7 +108,8 @@ def build_merkle(leaves):
         tree.append(next_level)
 
     # Ensure the root is in HexBytes format
-    tree[-1][0] = Web3.toHex(tree[-1][0])
+    root = Web3.toHex(tree[-1][0])
+    tree[-1][0] = root
     return tree
 
 
@@ -125,11 +126,9 @@ def prove_merkle(merkle_tree, random_indx):
 
     current_index = random_indx
     for level in merkle_tree[:-1]:
-        if current_index % 2 == 0:
-            if current_index + 1 < len(level):
-                merkle_proof.append(level[current_index + 1])
-        else:
-            merkle_proof.append(level[current_index - 1])
+        sibling_index = current_index + 1 if current_index % 2 == 0 else current_index - 1
+        if sibling_index < len(level):
+            merkle_proof.append(level[sibling_index])
         current_index //= 2
     return merkle_proof
 
