@@ -108,8 +108,7 @@ def build_merkle(leaves):
         tree.append(next_level)
 
     # Ensure the root is in HexBytes format
-    root = Web3.toHex(tree[-1][0])
-    tree[-1][0] = root
+    tree[-1][0] = Web3.toHex(tree[-1][0])
     return tree
 
 
