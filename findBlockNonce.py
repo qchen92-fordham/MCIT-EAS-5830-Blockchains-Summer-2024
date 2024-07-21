@@ -25,16 +25,18 @@ def mine_block(k, prev_hash, rand_lines):
     nonce = 0
     target = '0' * k
     
+    def hash_matches_target(h):
+        return h[-k:] == target
+
     while True:
         nonce_bytes = str(nonce).encode()
         hash_input = prev_hash + rand_lines_str + nonce_bytes
         hash_result = hashlib.sha256(hash_input).hexdigest()
-        if hash_result[-k:] == target:
+        if hash_matches_target(hash_result):
             break
         nonce += 1
     
     nonce = str(nonce).encode()
-
     assert isinstance(nonce, bytes), 'nonce should be of type bytes'
     return nonce
 
@@ -67,5 +69,5 @@ if __name__ == '__main__':
     diff = 5
 
     rand_lines = get_random_lines(filename, num_lines)
-    nonce = mine_block(diff, rand_lines)
+    nonce = mine_block(diff, b'previous_hash'， rand_lines)
     print(nonce)
