@@ -78,7 +78,8 @@ def convert_leaves(primes_list):
     """
 
     # TODO YOUR CODE HERE
-    leaves = [hashlib.sha256(str(p).encode()).hexdigest() for p in primes_list]
+    leaves = [hashlib.sha256(str(p).encode()).digest() for p in primes_list]
+
     return leaves
 
 
