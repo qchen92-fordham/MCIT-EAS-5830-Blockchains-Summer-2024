@@ -91,5 +91,6 @@ def scanBlocks(chain,start_block,end_block,contract_address):
 
 
     df = pd.DataFrame(events_list, columns=['chain', 'token', 'recipient', 'amount', 'transactionHash', 'address'])
+    df.to_csv(eventfile, index=False)
 
 
