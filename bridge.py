@@ -60,51 +60,66 @@ def scanBlocks(chain):
         return
     
     #YOUR CODE HERE
-    src_web3 = connectTo(source_chain)
-    dest_web3 = connectTo(destination_chain)
+    try:
+        # Connect to both blockchains
+        src_web3 = connectTo(source_chain)
+        dest_web3 = connectTo(destination_chain)
 
-    src_contract_info = getContractInfo(source_chain)
-    dest_contract_info = getContractInfo(destination_chain)
+        # Get contract information
+        src_contract_info = getContractInfo(source_chain)
+        dest_contract_info = getContractInfo(destination_chain)
 
-    src_contract = src_web3.eth.contract(address=src_contract_info['address'], abi=src_contract_info['abi'])
-    dest_contract = dest_web3.eth.contract(address=dest_contract_info['address'], abi=dest_contract_info['abi'])
+        # Load the contracts
+        src_contract = src_web3.eth.contract(address=src_contract_info['address'], abi=src_contract_info['abi'])
+        dest_contract = dest_web3.eth.contract(address=dest_contract_info['address'], abi=dest_contract_info['abi'])
 
-    if chain == 'source':
-        web3 = src_web3
-        event_name = 'Deposit'
-        other_contract = dest_contract
-        other_web3 = dest_web3
-        function_name = 'wrap'
-    elif chain == 'destination':
-        web3 = dest_web3
-        event_name = 'Unwrap'
-        other_contract = src_contract
-        other_web3 = src_web3
-        function_name = 'withdraw'
+        if chain == 'source':
+            web3 = src_web3
+            contract = src_contract
+            event_name = 'Deposit'
+            target_contract = dest_contract
+            target_web3 = dest_web3
+            function_name = 'wrap'
+        elif chain == 'destination':
+            web3 = dest_web3
+            contract = dest_contract
+            event_name = 'Unwrap'
+            target_contract = src_contract
+            target_web3 = src_web3
+            function_name = 'withdraw'
 
-    end_block = web3.eth.blockNumber
-    start_block = end_block - 5
+        end_block = web3.eth.blockNumber
+        start_block = end_block - 5
 
-    event_filter = getattr(src_contract.events, event_name).createFilter(fromBlock=start_block, toBlock=end_block)
-    events = event_filter.get_all_entries()
+        # Create filter for events
+        event_filter = getattr(contract.events, event_name).createFilter(fromBlock=start_block, toBlock=end_block)
+        events = event_filter.get_all_entries()
 
-    for event in events:
-        if event_name == 'Deposit':
-            token = event['args']['token']
-            recipient = event['args']['recipient']
-            amount = event['args']['amount']
-        elif event_name == 'Unwrap':
-            token = event['args']['underlying_token']
-            recipient = event['args']['to']
-            amount = event['args']['amount']
+        for event in events:
+            if event_name == 'Deposit':
+                token = event['args']['token']
+                recipient = event['args']['recipient']
+                amount = event['args']['amount']
+            elif event_name == 'Unwrap':
+                token = event['args']['underlying_token']
+                recipient = event['args']['to']
+                amount = event['args']['amount']
 
-        transaction = getattr(other_contract.functions, function_name)(token, recipient, amount).buildTransaction({
-            'from': warden_address,
-            'nonce': other_web3.eth.getTransactionCount(warden_address),
-            'gas': 5000000,
-            'gasPrice': other_web3.toWei('50', 'gwei')
-        })
-        signed_tx = other_web3.eth.account.signTransaction(transaction, warden_private_key)
-        tx_hash = other_web3.eth.sendRawTransaction(signed_tx.rawTransaction)
-        other_web3.eth.waitForTransactionReceipt(tx_hash)
-        print(f"Transaction {function_name} sent: {tx_hash.hex()}")
+            # Build transaction
+            transaction = getattr(target_contract.functions, function_name)(token, recipient, amount).buildTransaction({
+                'from': warden_address,
+                'nonce': target_web3.eth.getTransactionCount(warden_address),
+                'gas': 5000000,
+                'gasPrice': target_web3.toWei('50', 'gwei')
+            })
+            # Sign transaction
+            signed_tx = target_web3.eth.account.signTransaction(transaction, warden_private_key)
+            # Send transaction
+            tx_hash = target_web3.eth.sendRawTransaction(signed_tx.rawTransaction)
+            # Wait for receipt
+            receipt = target_web3.eth.waitForTransactionReceipt(tx_hash)
+            print(f"Transaction {function_name} sent: {tx_hash.hex()} - Receipt: {receipt}")
+            
+    except Exception as e:
+        print(f"Error running scanBlocks('{chain}'): {e}")
+        sys.exit(1)
