@@ -119,7 +119,7 @@ def scanBlocks(chain):
             # Wait for receipt
             receipt = target_web3.eth.waitForTransactionReceipt(tx_hash)
             print(f"Transaction {function_name} sent: {tx_hash.hex()} - Receipt: {receipt}")
-            
+    
     except Exception as e:
         print(f"Error running scanBlocks('{chain}'): {e}")
         sys.exit(1)
