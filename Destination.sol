@@ -61,5 +61,4 @@ contract Destination is AccessControl {
         return WrappedTokenAddress;
     }
 
-
-	}
+}
