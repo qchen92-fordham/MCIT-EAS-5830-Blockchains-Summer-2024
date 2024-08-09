@@ -82,9 +82,8 @@ def call_function(f_name, src_contract, dest_contract, events, w3):
     warden_account = w3.eth.account.from_key(warden_private_key)
     gas = 500000 if f_name == 'withdraw' else 5000000
 
-    nonce = w3.eth.get_transaction_count(warden_account.address)
-
     for event in events:
+        nonce = w3.eth.get_transaction_count(warden_account.address)
         transaction_dict = {
             "from": warden_account.address,
             "nonce": nonce,
@@ -107,8 +106,10 @@ def call_function(f_name, src_contract, dest_contract, events, w3):
         transaction = returned.build_transaction(transaction_dict)
 
         signed_tx = w3.eth.account.sign_transaction(transaction, private_key=warden_private_key)
-        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        w3.eth.wait_for_transaction_receipt(tx_hash)
-        print("Successfully sent", f_name, "raw transaction! tx_hash:", tx_hash.hex())
+        try:
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            w3.eth.wait_for_transaction_receipt(tx_hash)
+            print("Successfully sent", f_name, "raw transaction! tx_hash:", tx_hash.hex())
+        except ValueError as e:
+            print(f"Transaction failed: {e}")
 
-        nonce += 1  # Increment nonce for the next transaction
