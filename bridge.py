@@ -134,6 +134,3 @@ def call_function(f_name, src_contract, dest_contract, events, w3):
 
         nonce += 1  # Increment nonce for the next transaction
 
-# Call scanBlocks for both chains
-scanBlocks('source')
-scanBlocks('destination')
