@@ -39,6 +39,13 @@ def getContractInfo(chain):
 
     return contracts[chain]
 
+def is_token_registered(source_contract, token_address):
+    return source_contract.functions.approved(token_address).call()
+
+def is_token_created(destination_contract, token_address):
+    wrapped_token_address = destination_contract.functions.wrapped_tokens(token_address).call()
+    return wrapped_token_address != '0x0000000000000000000000000000000000000000'
+
 def scanBlocks(chain):
     """
     chain - (string) should be either "source" or "destination"
@@ -82,8 +89,9 @@ def call_function(f_name, src_contract, dest_contract, events, w3):
     warden_account = w3.eth.account.from_key(warden_private_key)
     gas = 500000 if f_name == 'withdraw' else 5000000
 
+    nonce = w3.eth.get_transaction_count(warden_account.address)
+
     for event in events:
-        nonce = w3.eth.get_transaction_count(warden_account.address)
         transaction_dict = {
             "from": warden_account.address,
             "nonce": nonce,
@@ -92,6 +100,20 @@ def call_function(f_name, src_contract, dest_contract, events, w3):
         }
 
         if f_name == 'wrap':
+            # Check if the token is already created
+            if not is_token_created(dest_contract, event["args"]["token"]):
+                print(f"Creating token on destination for {event['args']['token']}")
+                create_tx = dest_contract.functions.createToken(
+                    event["args"]["token"],
+                    "Wrapped Token",
+                    "WTKN"
+                ).build_transaction(transaction_dict)
+
+                signed_create_tx = w3.eth.account.sign_transaction(create_tx, private_key=warden_private_key)
+                create_tx_hash = w3.eth.send_raw_transaction(signed_create_tx.rawTransaction)
+                w3.eth.wait_for_transaction_receipt(create_tx_hash)
+                print("createToken Transaction hash:", create_tx_hash.hex())
+
             returned = dest_contract.functions.wrap(
                 event["args"]["token"],
                 event["args"]["recipient"],
@@ -106,10 +128,12 @@ def call_function(f_name, src_contract, dest_contract, events, w3):
         transaction = returned.build_transaction(transaction_dict)
 
         signed_tx = w3.eth.account.sign_transaction(transaction, private_key=warden_private_key)
-        try:
-            tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-            w3.eth.wait_for_transaction_receipt(tx_hash)
-            print("Successfully sent", f_name, "raw transaction! tx_hash:", tx_hash.hex())
-        except ValueError as e:
-            print(f"Transaction failed: {e}")
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        w3.eth.wait_for_transaction_receipt(tx_hash)
+        print("Successfully sent", f_name, "raw transaction! tx_hash:", tx_hash.hex())
 
+        nonce += 1  # Increment nonce for the next transaction
+
+# Call scanBlocks for both chains
+scanBlocks('source')
+scanBlocks('destination')
