@@ -1,0 +1,146 @@
+先把之前作业的Source.sol和Destination.sol代码复制到Codio src文件的Source.sol和Destination.sol
+
+
+
+
+----------------------------
+在Terminal输入cd Bridge
+
+
+
+----------------------------
+Terminal中输入foundryup
+
+
+
+
+----------------------------
+生成Source address的步骤：
+Terminal中输入以下：
+
+forge create src/Source.sol:Source --rpc-url https://api.avax-test.network/ext/bc/C/rpc  --private-key 这里放privatekey  --constructor-args 这里放你的账户地址
+
+会出现以下结果
+Deployer: 0x3b7f6e8011Bc2137ea1Aca77fAeDbe84Af46374A (这个是deployer address)
+Deployed to: 0xEDFC60E56d1FDEA77Fd7f7507eA0699005E2d03d (这个是source address)
+Transaction hash: 0x404c8eb3e985ab77c638db7a7e677c45816b4412c8f5a5199a38ad0cd06dc883
+
+
+
+
+----------------------------
+Terminal中输入foundryup
+
+
+
+
+----------------------------
+生成Destination address的步骤：
+Terminal中输入以下：
+
+forge create src/Destination.sol:Destination --rpc-url https://data-seed-prebsc-1-s1.binance.org:8545/  --private-key 这里放privatekey --constructor-args 这里放你的账户地址
+
+会出现以下结果：
+Deployer: 0x3b7f6e8011Bc2137ea1Aca77fAeDbe84Af46374A (这个是deployer address)
+Deployed to: 0x077e9C6cc11C9531f166ac2Fc2eFf2AE1C926424 (这个是destination address)
+Transaction hash: 0xe0e13973004c0755b0a1735e6b72c9c7eddd3c8ae9501ba524a9c1bbd46f51b4
+
+
+
+
+----------------------------
+把生成的source  address和destination address粘贴到contract_info.json
+
+
+
+
+----------------------------
+在Codio的root folder建立一个新的python文件，命名成register_and_create.py
+代码如下
+from web3 import Web3
+from pathlib import Path
+import json
+
+# Load contract information
+with open('contract_info.json', 'r') as file:
+    contract_info = json.load(file)
+
+# RPC URLs
+avax_rpc_url = "https://api.avax-test.network/ext/bc/C/rpc"  # Avalanche C-chain testnet
+bsc_rpc_url = "https://data-seed-prebsc-1-s1.binance.org:8545/"  # BSC testnet
+
+# Connect to the networks
+avax_web3 = Web3(Web3.HTTPProvider(avax_rpc_url))
+bsc_web3 = Web3(Web3.HTTPProvider(bsc_rpc_url))
+
+# Deployer details
+deployer_address = "这里放deployer address"
+private_key = "这里放private key"
+
+# Load Source contract
+source_contract = avax_web3.eth.contract(
+    address=Web3.to_checksum_address(contract_info['source']['address']),
+    abi=contract_info['source']['abi']
+)
+
+# Load Destination contract
+destination_contract = bsc_web3.eth.contract(
+    address=Web3.to_checksum_address(contract_info['destination']['address']),
+    abi=contract_info['destination']['abi']
+)
+
+# Token addresses from the CSV
+tokens = [
+    "0xc677c31AD31F73A5290f5ef067F8CEF8d301e45c",
+    "0x0773b81e0524447784CcE1F3808fed6AaA156eC8"
+]
+
+# Register tokens on the Source contract
+for token in tokens:
+    nonce = avax_web3.eth.get_transaction_count(deployer_address, 'pending')
+    transaction = source_contract.functions.registerToken(
+        Web3.to_checksum_address(token)
+    ).build_transaction({
+        'from': deployer_address,
+        'nonce': nonce,
+        'gas': 500000,
+        'gasPrice': avax_web3.to_wei('25', 'gwei')
+    })
+
+    signed_txn = avax_web3.eth.account.sign_transaction(transaction, private_key=private_key)
+    tx_hash = avax_web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+    print(f"registerToken Transaction hash: {tx_hash.hex()}")
+
+    avax_web3.eth.wait_for_transaction_receipt(tx_hash)
+
+# Create tokens on the Destination contract
+for token in tokens:
+    nonce = bsc_web3.eth.get_transaction_count(deployer_address, 'pending')
+    transaction = destination_contract.functions.createToken(
+        Web3.to_checksum_address(token),
+        "Wrapped Token",  # You can customize the token name
+        "WTKN"  # You can customize the token symbol
+    ).build_transaction({
+        'from': deployer_address,
+        'nonce': nonce,
+        'gas': 2000000,
+        'gasPrice': bsc_web3.to_wei('25', 'gwei')
+    })
+
+    signed_txn = bsc_web3.eth.account.sign_transaction(transaction, private_key=private_key)
+    tx_hash = bsc_web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+    print(f"createToken Transaction hash: {tx_hash.hex()}")
+
+    bsc_web3.eth.wait_for_transaction_receipt(tx_hash)
+
+
+
+----------------------------
+Terminal的root directory中输入python3 register_and_create.py
+
+
+registerToken Transaction hash: 0x0d9d461b9a81c3043277286f2c8d9cb5489400c867a16e7a0d1ed62ecbc8873c
+registerToken Transaction hash: 0x3f72ba99d972de2a8dfc278b57c6be05c11553401a24d79f73b11c9abdff35f6
+createToken Transaction hash: 0x2da7b72016311aaec214355790ef7b4c20f9747764accc155c29cba8c4a0f144
+createToken Transaction hash: 0x06ad7be0befcb0ee25fc0b06621d349b7abebe6cb8df9be82475dfae594153a6
+出现这个就表示register create成功
